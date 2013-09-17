@@ -51,7 +51,7 @@ func (f BatchMakerFunc) MakeBatch() Batch {
 type Client struct {
 	// Capacity of work channel. If this is zero, the Work channel will be
 	// blocking.
-	PendingCapacity int
+	PendingWorkCapacity int
 
 	// Maximum number of items in a batch. If this is zero batches will only be
 	// dispatched upon hitting the BatchTimeout. It is an error for both this and
@@ -78,7 +78,7 @@ func (c *Client) Start() error {
 		return errZeroBoth
 	}
 
-	c.Work = make(chan interface{}, c.PendingCapacity)
+	c.Work = make(chan interface{}, c.PendingWorkCapacity)
 	c.workGroup.Add(1) // this is the worker itself
 	go c.worker()
 	return nil

@@ -10,10 +10,10 @@ import (
 
 // The ShoppingManager manages the shopping list and dispatches shoppers.
 type ShoppingManager struct {
-	ShopperCapacity int           // How much a shopper can carry at a time.
-	TripTimeout     time.Duration // How long we wait once we need to get something.
-	PendingCapacity int           // How long our shopping list can be.
-	muster          muster.Client
+	ShopperCapacity     int           // How much a shopper can carry at a time.
+	TripTimeout         time.Duration // How long we wait once we need to get something.
+	PendingWorkCapacity int           // How long our shopping list can be.
+	muster              muster.Client
 }
 
 // The ShoppingManager has to be started in order to initialize the underlying
@@ -21,7 +21,7 @@ type ShoppingManager struct {
 func (s *ShoppingManager) Start() error {
 	s.muster.MaxBatchSize = s.ShopperCapacity
 	s.muster.BatchTimeout = s.TripTimeout
-	s.muster.PendingCapacity = s.PendingCapacity
+	s.muster.PendingWorkCapacity = s.PendingWorkCapacity
 	s.muster.BatchMaker = muster.BatchMakerFunc(
 		func() muster.Batch { return &batch{ShoppingManager: s} })
 	return s.muster.Start()
@@ -60,9 +60,9 @@ func (b *batch) Fire(notifier muster.Notifier) {
 
 func Example() {
 	sm := &ShoppingManager{
-		ShopperCapacity: 3,
-		TripTimeout:     20 * time.Millisecond,
-		PendingCapacity: 100,
+		ShopperCapacity:     3,
+		TripTimeout:         20 * time.Millisecond,
+		PendingWorkCapacity: 100,
 	}
 
 	// We need to start the muster.
