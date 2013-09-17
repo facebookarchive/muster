@@ -1,4 +1,1 @@
-- zero timeout should force waiting for batch to be filled
-- zero max batch size should force waiting for timeout
-- zero timeout & max batch size should be an error
 - max concurrent workers

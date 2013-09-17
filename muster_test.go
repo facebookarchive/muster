@@ -143,6 +143,35 @@ func TestZeroMaxBatchSize(t *testing.T) {
 	<-finished
 }
 
+func TestZeroBatchTimeout(t *testing.T) {
+	t.Parallel()
+	expected := [][]string{{"milk", "yogurt"}}
+	finished := make(chan struct{})
+	c := &testClient{
+		MaxBatchSize:    3,
+		Fire:            expectFire(t, finished, expected),
+		PendingCapacity: 100,
+	}
+	errCall(t, c.Start)
+	addExpected(c, expected)
+	time.Sleep(30 * time.Millisecond)
+	select {
+	case <-finished:
+		t.Fatal("should not be finished yet")
+	default:
+	}
+	errCall(t, c.Stop)
+	<-finished
+}
+
+func TestZeroBoth(t *testing.T) {
+	t.Parallel()
+	c := &testClient{}
+	if c.Start() == nil {
+		t.Fatal("was expecting error")
+	}
+}
+
 func BenchmarkFlow(b *testing.B) {
 	c := &testClient{
 		MaxBatchSize:    3,

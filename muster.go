@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-var (
-	errZeroBatchTimeout = errors.New("muster: invalid zero BatchTimeout")
+var errZeroBoth = errors.New(
+	"muster: MaxBatchSize and BatchTimeout can't both be zero",
 )
 
 // The notifier is used to indicate to the Client when a batch has finished
@@ -59,8 +59,8 @@ type Client struct {
 
 // Start the background worker goroutines and get ready for accepting requests.
 func (c *Client) Start() error {
-	if int64(c.BatchTimeout) == 0 {
-		return errZeroBatchTimeout
+	if int64(c.BatchTimeout) == 0 && c.MaxBatchSize == 0 {
+		return errZeroBoth
 	}
 
 	c.Work = make(chan interface{}, c.PendingCapacity)
@@ -94,7 +94,7 @@ func (c *Client) worker() {
 		count++
 		if c.MaxBatchSize != 0 && count >= c.MaxBatchSize {
 			send()
-		} else if batchTimeout == nil {
+		} else if int64(c.BatchTimeout) != 0 && batchTimeout == nil {
 			batchTimeout = time.After(c.BatchTimeout)
 		}
 	}
