@@ -49,12 +49,27 @@ func (f BatchMakerFunc) MakeBatch() Batch {
 // The Client manages the background process that makes, populates & fires
 // Batches.
 type Client struct {
-	PendingCapacity int              // Capacity of work channel.
-	MaxBatchSize    int              // Maximum number of items in a batch.
-	BatchTimeout    time.Duration    // Duration after which to send a pending batch.
-	BatchMaker      BatchMaker       // Makes empty Batches.
-	Work            chan interface{} // Send work items here to add to batch.
-	workGroup       sync.WaitGroup
+	// Capacity of work channel. If this is zero, the Work channel will be
+	// blocking.
+	PendingCapacity int
+
+	// Maximum number of items in a batch. If this is zero batches will only be
+	// dispatched upon hitting the BatchTimeout. It is an error for both this and
+	// the BatchTimeout to be zero.
+	MaxBatchSize int
+
+	// Duration after which to send a pending batch. If this is zero batches will
+	// only be dispatched upon hitting the MaxBatchSize. It is an error for both
+	// this and the MaxBatchSize to be zero.
+	BatchTimeout time.Duration
+
+	// Makes empty Batches.
+	BatchMaker BatchMaker
+
+	// Once this Client has been started, send work items here to add to batch.
+	Work chan interface{}
+
+	workGroup sync.WaitGroup
 }
 
 // Start the background worker goroutines and get ready for accepting requests.
