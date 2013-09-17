@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	errZeroMaxBatchSize = errors.New("muster: invalid zero MaxBatchSize")
 	errZeroBatchTimeout = errors.New("muster: invalid zero BatchTimeout")
 )
 
@@ -60,11 +59,8 @@ type Client struct {
 
 // Start the background worker goroutines and get ready for accepting requests.
 func (c *Client) Start() error {
-	if c.MaxBatchSize == 0 {
-		return errZeroMaxBatchSize
-	}
 	if int64(c.BatchTimeout) == 0 {
-		return errZeroMaxBatchSize
+		return errZeroBatchTimeout
 	}
 
 	c.Work = make(chan interface{}, c.PendingCapacity)
@@ -96,7 +92,7 @@ func (c *Client) worker() {
 	add := func(item interface{}) {
 		batch.Add(item)
 		count++
-		if count >= c.MaxBatchSize {
+		if c.MaxBatchSize != 0 && count >= c.MaxBatchSize {
 			send()
 		} else if batchTimeout == nil {
 			batchTimeout = time.After(c.BatchTimeout)
