@@ -3,3 +3,4 @@
 - zero timeout & max batch size should be an error
 - double select to drain before timeout
 - stop timeout
+- max concurrent workers
