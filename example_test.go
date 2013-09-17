@@ -23,7 +23,8 @@ func (s *ShoppingManager) Start() error {
 	s.muster.MaxBatchSize = s.ShopperCapacity
 	s.muster.BatchTimeout = s.TripTimeout
 	s.muster.PendingCapacity = s.PendingCapacity
-	s.muster.BatchMaker = &batchMaker{ShoppingManager: s}
+	s.muster.BatchMaker = muster.BatchMakerFunc(
+		func() muster.Batch { return &batch{ShoppingManager: s} })
 	return s.muster.Start()
 }
 
@@ -56,16 +57,6 @@ func (b *batch) Add(item interface{}) {
 func (b *batch) Fire(notifier muster.Notifier) {
 	defer notifier.Done()
 	b.ShoppingManager.Delivery <- b.Items
-}
-
-// The batchMaker implements the muster.BatchMaker to allow creating new empty
-// Batches as necessary.
-type batchMaker struct {
-	ShoppingManager *ShoppingManager
-}
-
-func (b *batchMaker) MakeBatch() muster.Batch {
-	return &batch{ShoppingManager: b.ShoppingManager}
 }
 
 func Example() {
