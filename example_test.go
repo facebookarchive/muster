@@ -17,6 +17,8 @@ type ShoppingManager struct {
 	muster          muster.Client
 }
 
+// The ShoppingManager has to be started in order to initialize the underlying
+// work channel as well as the background goroutine that handles the work.
 func (s *ShoppingManager) Start() error {
 	s.muster.MaxBatchSize = s.ShopperCapacity
 	s.muster.BatchTimeout = s.TripTimeout
@@ -25,28 +27,39 @@ func (s *ShoppingManager) Start() error {
 	return s.muster.Start()
 }
 
+// Similarly the ShoppingManager has to be stopped in order to ensure we flush
+// pending items and wait for in progress batches.
 func (s *ShoppingManager) Stop() error {
 	return s.muster.Stop()
 }
 
+// The ShoppingManager provides a typed Add method which enqueues the work.
 func (s *ShoppingManager) Add(item string) {
 	s.muster.Work <- item
 }
 
+// The batch is the collection of items that will be dispatched together.
 type batch struct {
 	ShoppingManager *ShoppingManager
 	Items           []string
 }
 
+// The batch provides an untyped Add to satisfy the muster.Batch interface. As
+// is the case here, the Batch implementation is internal to the user of muster
+// and not exposed to the users of ShoppingManager.
 func (b *batch) Add(item interface{}) {
 	b.Items = append(b.Items, item.(string))
 }
 
+// Once a Batch is ready, it will be Fired. It must call notifier.Done once the
+// batch has been processed.
 func (b *batch) Fire(notifier muster.Notifier) {
 	defer notifier.Done()
 	b.ShoppingManager.Delivery <- b.Items
 }
 
+// The batchMaker implements the muster.BatchMaker to allow creating new empty
+// Batches as necessary.
 type batchMaker struct {
 	ShoppingManager *ShoppingManager
 }
@@ -56,6 +69,8 @@ func (b *batchMaker) MakeBatch() muster.Batch {
 }
 
 func Example() {
+	// For example purposes our batches are simply printed out using our Delivery
+	// channel.
 	delivery := make(chan []string)
 	go func() {
 		for batch := range delivery {
@@ -76,7 +91,8 @@ func Example() {
 		os.Exit(1)
 	}
 
-	// Since our capacity is 3, these 3 will end up in a batch.
+	// Since our capacity is 3, these 3 will end up in a batch as soon as the
+	// third item has been added.
 	sm.Add("milk")
 	sm.Add("yogurt")
 	sm.Add("butter")
@@ -86,7 +102,7 @@ func Example() {
 	sm.Add("bagels")
 	time.Sleep(30 * time.Millisecond)
 
-	// Finally this 1 will also get batched as soon as we Stop.
+	// Finally this 1 will also get batched as soon as we Stop which flushes.
 	sm.Add("cheese")
 
 	// Stopping the muster ensures we wait for all batches to finish.
