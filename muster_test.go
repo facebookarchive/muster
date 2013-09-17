@@ -59,6 +59,7 @@ func expectFire(
 ) func(actual []string, notifier muster.Notifier) {
 
 	return func(actual []string, notifier muster.Notifier) {
+		defer notifier.Done()
 		defer close(finished)
 		for _, batch := range expected {
 			if !reflect.DeepEqual(actual, batch) {
@@ -104,5 +105,21 @@ func TestBatchTimeout(t *testing.T) {
 	errCall(t, c.Start)
 	addExpected(c, expected)
 	time.Sleep(30 * time.Millisecond)
+	<-finished
+}
+
+func TestStop(t *testing.T) {
+	t.Parallel()
+	expected := [][]string{{"milk", "yogurt"}}
+	finished := make(chan struct{})
+	c := &testClient{
+		MaxBatchSize:    3,
+		BatchTimeout:    time.Hour,
+		Fire:            expectFire(t, finished, expected),
+		PendingCapacity: 100,
+	}
+	errCall(t, c.Start)
+	addExpected(c, expected)
+	errCall(t, c.Stop)
 	<-finished
 }
