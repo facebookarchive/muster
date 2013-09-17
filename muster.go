@@ -40,6 +40,14 @@ type BatchMaker interface {
 	MakeBatch() Batch
 }
 
+// The BatchMakerFunc type is an adapter to allow the use of ordinary functions
+// as BatchMakers.
+type BatchMakerFunc func() Batch
+
+func (f BatchMakerFunc) MakeBatch() Batch {
+	return f()
+}
+
 // The Client manages the background process that makes, populates & fires
 // Batches.
 type Client struct {
