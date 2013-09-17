@@ -172,6 +172,20 @@ func TestZeroBoth(t *testing.T) {
 	}
 }
 
+func TestEmptyStop(t *testing.T) {
+	t.Parallel()
+	c := &testClient{
+		MaxBatchSize: 3,
+		Fire: func(actual []string, notifier muster.Notifier) {
+			defer notifier.Done()
+			t.Fatal("should not get called")
+		},
+		PendingCapacity: 100,
+	}
+	errCall(t, c.Start)
+	errCall(t, c.Stop)
+}
+
 func BenchmarkFlow(b *testing.B) {
 	c := &testClient{
 		MaxBatchSize:    3,

@@ -118,7 +118,9 @@ func (c *Client) worker() {
 		select {
 		case item, open := <-c.Work:
 			if !open {
-				send()
+				if count != 0 {
+					send()
+				}
 				return
 			}
 			add(item)
@@ -126,7 +128,9 @@ func (c *Client) worker() {
 			select {
 			case item, open := <-c.Work:
 				if !open {
-					send()
+					if count != 0 {
+						send()
+					}
 					return
 				}
 				add(item)
