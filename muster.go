@@ -1,3 +1,6 @@
+// Package muster provides a framework to write batching enabled libraries. The
+// batching is triggered based on a maximum number items in a batch, and/or
+// based on a timeout for how long a batch waits before it is dispatched.
 package muster
 
 import (
