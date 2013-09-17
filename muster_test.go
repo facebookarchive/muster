@@ -46,7 +46,11 @@ func (b *testBatch) Fire(notifier muster.Notifier) {
 	b.testClient.Fire(b.Items, notifier)
 }
 
-func errCall(t *testing.T, f func() error) {
+type fatal interface {
+	Fatal(args ...interface{})
+}
+
+func errCall(t fatal, f func() error) {
 	if err := f(); err != nil {
 		t.Fatal(err)
 	}
@@ -122,4 +126,20 @@ func TestStop(t *testing.T) {
 	addExpected(c, expected)
 	errCall(t, c.Stop)
 	<-finished
+}
+
+func BenchmarkFlow(b *testing.B) {
+	c := &testClient{
+		MaxBatchSize:    3,
+		BatchTimeout:    time.Hour,
+		PendingCapacity: 100,
+		Fire: func(actual []string, notifier muster.Notifier) {
+			notifier.Done()
+		},
+	}
+	errCall(b, c.Start)
+	for i := 0; i < b.N; i++ {
+		c.Add("42")
+	}
+	errCall(b, c.Stop)
 }
