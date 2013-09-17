@@ -13,7 +13,6 @@ type ShoppingManager struct {
 	ShopperCapacity int           // How much a shopper can carry at a time.
 	TripTimeout     time.Duration // How long we wait once we need to get something.
 	PendingCapacity int           // How long our shopping list can be.
-	Delivery        chan []string // Finished batches will be delivered here.
 	muster          muster.Client
 }
 
@@ -56,24 +55,14 @@ func (b *batch) Add(item interface{}) {
 // batch has been processed.
 func (b *batch) Fire(notifier muster.Notifier) {
 	defer notifier.Done()
-	b.ShoppingManager.Delivery <- b.Items
+	fmt.Println("Delivery", b.Items)
 }
 
 func Example() {
-	// For example purposes our batches are simply printed out using our Delivery
-	// channel.
-	delivery := make(chan []string)
-	go func() {
-		for batch := range delivery {
-			fmt.Println("Delivery", batch)
-		}
-	}()
-
 	sm := &ShoppingManager{
 		ShopperCapacity: 3,
 		TripTimeout:     20 * time.Millisecond,
 		PendingCapacity: 100,
-		Delivery:        delivery,
 	}
 
 	// We need to start the muster.

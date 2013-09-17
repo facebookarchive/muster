@@ -10,9 +10,8 @@ import (
 )
 
 var (
-	errZeroPendingCapacity = errors.New("muster: invalid zero PendingCapacity")
-	errZeroMaxBatchSize    = errors.New("muster: invalid zero MaxBatchSize")
-	errZeroBatchTimeout    = errors.New("muster: invalid zero BatchTimeout")
+	errZeroMaxBatchSize = errors.New("muster: invalid zero MaxBatchSize")
+	errZeroBatchTimeout = errors.New("muster: invalid zero BatchTimeout")
 )
 
 // The notifier is used to indicate to the Client when a batch has finished
@@ -61,9 +60,6 @@ type Client struct {
 
 // Start the background worker goroutines and get ready for accepting requests.
 func (c *Client) Start() error {
-	if c.PendingCapacity == 0 {
-		return errZeroPendingCapacity
-	}
 	if c.MaxBatchSize == 0 {
 		return errZeroMaxBatchSize
 	}
@@ -98,6 +94,7 @@ func (c *Client) worker() {
 		batchTimeout = nil
 	}
 	for {
+		// We use two selects in order to first prefer draining the work queue.
 		select {
 		case item, open := <-c.Work:
 			if !open {
