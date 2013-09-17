@@ -111,8 +111,17 @@ func (c *Client) worker() {
 				return
 			}
 			add(item)
-		case <-batchTimeout:
-			send()
+		default:
+			select {
+			case item, open := <-c.Work:
+				if !open {
+					send()
+					return
+				}
+				add(item)
+			case <-batchTimeout:
+				send()
+			}
 		}
 	}
 }
