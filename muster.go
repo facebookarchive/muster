@@ -36,7 +36,8 @@ type Notifier interface {
 // exactly once. The Batch does not need to be safe for concurrent access;
 // synchronization will be handled by the Client.
 type Batch interface {
-	// This should add the given single item to the Batch.
+	// This should add the given single item to the Batch. This is the "other
+	// end" of the Client.Work channel where your application will send items.
 	Add(item interface{})
 
 	// Fire off the Batch. It should call Notifier.Done() when it has finished
