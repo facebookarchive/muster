@@ -5,10 +5,9 @@
 // performing work in batches for whatever reason. Batching is triggered based
 // on a maximum number of items in a batch, and/or based on a timeout for how
 // long a batch waits before it is dispatched. For example if you're willing to
-// wait for a maximum of X duration, you can just set BatchTimeout and keep
-// adding things. Or if you don't care about how long you wait, just set
-// MaxBatchSize and it will only fire when the batch is filled. For best
-// results set both.
+// wait for a maximum of a 1m duration, you can just set BatchTimeout and keep
+// adding things. Or if you want batches of 50 just set MaxBatchSize and it
+// will only fire when the batch is filled. For best results set both.
 //
 // This library provides a component that is intended to be used in a hidden
 // fashion. This is in your best interest in order to avoid unnecessary
