@@ -1,6 +1,18 @@
-// Package muster provides a framework to write batching enabled libraries. The
-// batching is triggered based on a maximum number items in a batch, and/or
-// based on a timeout for how long a batch waits before it is dispatched.
+// Package muster provides a framework to write batching enabled libraries.
+//
+// It will be useful to you if you're building an API that benefits from
+// performing work in batches for whatever reason. Batching is triggered based
+// on a maximum number items in a batch, and/or based on a timeout for how long
+// a batch waits before it is dispatched. For example if you're willing to wait
+// for a maximum of X duration, you can just set BatchTimeout and keep adding
+// things. Or if you don't care about how long you wait, just set MaxBatchSize
+// and it will only fire when the batch is filled. For best results set both.
+//
+// This library provides a component that is intended to be used in a hidden
+// fashion in other libraries. This is in your best interest to avoid
+// unnecessary coupling. You will typically achieve this by two means: make the
+// implementations of muster.Batch and muster.BatchMaker private. Additionally
+// making the use of muster.Client private (embedding a private instance).
 package muster
 
 import (
