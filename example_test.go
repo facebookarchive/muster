@@ -55,6 +55,7 @@ func (b *batch) Add(item interface{}) {
 func (b *batch) Fire(notifier muster.Notifier) {
 	defer notifier.Done()
 	fmt.Println("Delivery", b.Items)
+	os.Stdout.Sync()
 }
 
 func Example() {
