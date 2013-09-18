@@ -185,6 +185,45 @@ func TestEmptyStop(t *testing.T) {
 	errCall(t, c.Stop)
 }
 
+func TestContiniousSendWithTimeoutOnlyBlocking(t *testing.T) {
+	t.Parallel()
+	finished := make(chan bool, 1)
+	c := &testClient{
+		BatchTimeout: 5 * time.Millisecond,
+		Fire: func(actual []string, notifier muster.Notifier) {
+			defer notifier.Done()
+			finished <- true
+		},
+	}
+	errCall(t, c.Start)
+	go func() {
+		for {
+			c.Add("42")
+		}
+	}()
+	<-finished
+}
+
+func TestContiniousSendWithTimeoutOnly(t *testing.T) {
+	t.Parallel()
+	finished := make(chan bool, 1)
+	c := &testClient{
+		BatchTimeout: 5 * time.Millisecond,
+		Fire: func(actual []string, notifier muster.Notifier) {
+			defer notifier.Done()
+			finished <- true
+		},
+		PendingWorkCapacity: 100,
+	}
+	errCall(t, c.Start)
+	go func() {
+		for {
+			c.Add("42")
+		}
+	}()
+	<-finished
+}
+
 func BenchmarkFlow(b *testing.B) {
 	c := &testClient{
 		MaxBatchSize:        3,
