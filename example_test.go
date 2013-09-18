@@ -10,8 +10,8 @@ import (
 
 // The ShoppingManager manages the shopping list and dispatches shoppers.
 type ShoppingManager struct {
-	ShopperCapacity     int           // How much a shopper can carry at a time.
-	TripTimeout         time.Duration // How long we wait once we need to get something.
+	MaxBatchSize        int           // How much a shopper can carry at a time.
+	BatchTimeout        time.Duration // How long we wait once we need to get something.
 	PendingWorkCapacity int           // How long our shopping list can be.
 	muster              muster.Client
 }
@@ -19,8 +19,8 @@ type ShoppingManager struct {
 // The ShoppingManager has to be started in order to initialize the underlying
 // work channel as well as the background goroutine that handles the work.
 func (s *ShoppingManager) Start() error {
-	s.muster.MaxBatchSize = s.ShopperCapacity
-	s.muster.BatchTimeout = s.TripTimeout
+	s.muster.MaxBatchSize = s.MaxBatchSize
+	s.muster.BatchTimeout = s.BatchTimeout
 	s.muster.PendingWorkCapacity = s.PendingWorkCapacity
 	s.muster.BatchMaker = muster.BatchMakerFunc(
 		func() muster.Batch { return &batch{ShoppingManager: s} })
@@ -60,8 +60,8 @@ func (b *batch) Fire(notifier muster.Notifier) {
 
 func Example() {
 	sm := &ShoppingManager{
-		ShopperCapacity:     3,
-		TripTimeout:         20 * time.Millisecond,
+		MaxBatchSize:        3,
+		BatchTimeout:        20 * time.Millisecond,
 		PendingWorkCapacity: 100,
 	}
 
