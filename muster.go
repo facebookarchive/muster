@@ -9,10 +9,10 @@
 // adding things. Or if you want batches of 50 just set MaxBatchSize and it
 // will only fire when the batch is filled. For best results set both.
 //
-// This library provides a component that is intended to be used in a hidden
-// fashion. This is in your best interest in order to avoid unnecessary
-// coupling. You will typically achieve this by ensuring your implementation of
-// muster.Batch and the use of muster.Client are private.
+// It would be in your best interest to use this library in a hidden fashion in
+// order to avoid unnecessary coupling. You will typically achieve this by
+// ensuring your implementation of muster.Batch and the use of muster.Client
+// are private.
 package muster
 
 import (
