@@ -80,7 +80,7 @@ func Example() {
 	// Since our timeout is 20ms, these 2 will end up in a batch once we Sleep.
 	sm.Add("bread")
 	sm.Add("bagels")
-	time.Sleep(30 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	// Finally this 1 will also get batched as soon as we Stop which flushes.
 	sm.Add("cheese")
