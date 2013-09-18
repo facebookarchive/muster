@@ -48,10 +48,6 @@ type Batch interface {
 // The Client manages the background process that makes, populates & fires
 // Batches.
 type Client struct {
-	// Capacity of work channel. If this is zero, the Work channel will be
-	// blocking.
-	PendingWorkCapacity int
-
 	// Maximum number of items in a batch. If this is zero batches will only be
 	// dispatched upon hitting the BatchTimeout. It is an error for both this and
 	// the BatchTimeout to be zero.
@@ -64,6 +60,10 @@ type Client struct {
 
 	// This function should create a new empty Batch on each invocation.
 	BatchMaker func() Batch
+
+	// Capacity of work channel. If this is zero, the Work channel will be
+	// blocking.
+	PendingWorkCapacity int
 
 	// Once this Client has been started, send work items here to add to batch.
 	Work chan interface{}
