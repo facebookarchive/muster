@@ -104,7 +104,13 @@ func (c *Client) worker() {
 		count = 0
 		batchTimeout = nil
 	}
-	add := func(item interface{}) {
+	recv := func(item interface{}, open bool) bool {
+		if !open {
+			if count != 0 {
+				send()
+			}
+			return true
+		}
 		batch.Add(item)
 		count++
 		if c.MaxBatchSize != 0 && count >= c.MaxBatchSize {
@@ -112,28 +118,21 @@ func (c *Client) worker() {
 		} else if int64(c.BatchTimeout) != 0 && batchTimeout == nil {
 			batchTimeout = time.After(c.BatchTimeout)
 		}
+		return false
 	}
 	for {
 		// We use two selects in order to first prefer draining the work queue.
 		select {
 		case item, open := <-c.Work:
-			if !open {
-				if count != 0 {
-					send()
-				}
+			if recv(item, open) {
 				return
 			}
-			add(item)
 		default:
 			select {
 			case item, open := <-c.Work:
-				if !open {
-					if count != 0 {
-						send()
-					}
+				if recv(item, open) {
 					return
 				}
-				add(item)
 			case <-batchTimeout:
 				send()
 			}
