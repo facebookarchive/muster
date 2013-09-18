@@ -1,4 +1,5 @@
-// Package muster provides a framework to write batching enabled libraries.
+// Package muster provides a framework for writing libraries that internally
+// batch operations.
 //
 // It will be useful to you if you're building an API that benefits from
 // performing work in batches for whatever reason. Batching is triggered based
@@ -9,9 +10,9 @@
 // and it will only fire when the batch is filled. For best results set both.
 //
 // This library provides a component that is intended to be used in a hidden
-// fashion in other libraries. This is in your best interest to avoid
-// unnecessary coupling. You will typically achieve this by ensuring your
-// implementation of muster.Batch and the use of muster.Client are private.
+// fashion. This is in your best interest in order to avoid unnecessary
+// coupling. You will typically achieve this by ensuring your implementation of
+// muster.Batch and the use of muster.Client are private.
 package muster
 
 import (
