@@ -8,45 +8,44 @@ import (
 	"github.com/daaku/go.muster"
 )
 
-// The ShoppingManager manages the shopping list and dispatches shoppers.
-type ShoppingManager struct {
+// The ShoppingClient manages the shopping list and dispatches shoppers.
+type ShoppingClient struct {
 	MaxBatchSize        int           // How much a shopper can carry at a time.
 	BatchTimeout        time.Duration // How long we wait once we need to get something.
 	PendingWorkCapacity int           // How long our shopping list can be.
 	muster              muster.Client
 }
 
-// The ShoppingManager has to be started in order to initialize the underlying
+// The ShoppingClient has to be started in order to initialize the underlying
 // work channel as well as the background goroutine that handles the work.
-func (s *ShoppingManager) Start() error {
+func (s *ShoppingClient) Start() error {
 	s.muster.MaxBatchSize = s.MaxBatchSize
 	s.muster.BatchTimeout = s.BatchTimeout
 	s.muster.PendingWorkCapacity = s.PendingWorkCapacity
-	s.muster.BatchMaker = muster.BatchMakerFunc(
-		func() muster.Batch { return &batch{ShoppingManager: s} })
+	s.muster.BatchMaker = func() muster.Batch { return &batch{Client: s} }
 	return s.muster.Start()
 }
 
-// Similarly the ShoppingManager has to be stopped in order to ensure we flush
+// Similarly the ShoppingClient has to be stopped in order to ensure we flush
 // pending items and wait for in progress batches.
-func (s *ShoppingManager) Stop() error {
+func (s *ShoppingClient) Stop() error {
 	return s.muster.Stop()
 }
 
-// The ShoppingManager provides a typed Add method which enqueues the work.
-func (s *ShoppingManager) Add(item string) {
+// The ShoppingClient provides a typed Add method which enqueues the work.
+func (s *ShoppingClient) Add(item string) {
 	s.muster.Work <- item
 }
 
 // The batch is the collection of items that will be dispatched together.
 type batch struct {
-	ShoppingManager *ShoppingManager
-	Items           []string
+	Client *ShoppingClient
+	Items  []string
 }
 
 // The batch provides an untyped Add to satisfy the muster.Batch interface. As
 // is the case here, the Batch implementation is internal to the user of muster
-// and not exposed to the users of ShoppingManager.
+// and not exposed to the users of ShoppingClient.
 func (b *batch) Add(item interface{}) {
 	b.Items = append(b.Items, item.(string))
 }
@@ -59,7 +58,7 @@ func (b *batch) Fire(notifier muster.Notifier) {
 }
 
 func Example() {
-	sm := &ShoppingManager{
+	sm := &ShoppingClient{
 		MaxBatchSize:        3,
 		BatchTimeout:        20 * time.Millisecond,
 		PendingWorkCapacity: 100,

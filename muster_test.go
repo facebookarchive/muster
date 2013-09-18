@@ -20,8 +20,7 @@ func (c *testClient) Start() error {
 	c.muster.MaxBatchSize = c.MaxBatchSize
 	c.muster.BatchTimeout = c.BatchTimeout
 	c.muster.PendingWorkCapacity = c.PendingWorkCapacity
-	c.muster.BatchMaker = muster.BatchMakerFunc(
-		func() muster.Batch { return &testBatch{testClient: c} })
+	c.muster.BatchMaker = func() muster.Batch { return &testBatch{Client: c} }
 	return c.muster.Start()
 }
 
@@ -34,8 +33,8 @@ func (c *testClient) Add(item string) {
 }
 
 type testBatch struct {
-	testClient *testClient
-	Items      []string
+	Client *testClient
+	Items  []string
 }
 
 func (b *testBatch) Add(item interface{}) {
@@ -43,7 +42,7 @@ func (b *testBatch) Add(item interface{}) {
 }
 
 func (b *testBatch) Fire(notifier muster.Notifier) {
-	b.testClient.Fire(b.Items, notifier)
+	b.Client.Fire(b.Items, notifier)
 }
 
 type fatal interface {

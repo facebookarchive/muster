@@ -10,9 +10,8 @@
 //
 // This library provides a component that is intended to be used in a hidden
 // fashion in other libraries. This is in your best interest to avoid
-// unnecessary coupling. You will typically achieve this by two means: make the
-// implementations of muster.Batch and muster.BatchMaker private. Additionally
-// making the use of muster.Client private (embedding a private instance).
+// unnecessary coupling. You will typically achieve this by ensuring your
+// implementation of muster.Batch and the use of muster.Client are private.
 package muster
 
 import (
@@ -45,20 +44,6 @@ type Batch interface {
 	Fire(notifier Notifier)
 }
 
-// Makes empty Batches.
-type BatchMaker interface {
-	// Makes a new empty batch.
-	MakeBatch() Batch
-}
-
-// The BatchMakerFunc type is an adapter to allow the use of ordinary functions
-// as BatchMakers.
-type BatchMakerFunc func() Batch
-
-func (f BatchMakerFunc) MakeBatch() Batch {
-	return f()
-}
-
 // The Client manages the background process that makes, populates & fires
 // Batches.
 type Client struct {
@@ -76,8 +61,8 @@ type Client struct {
 	// this and the MaxBatchSize to be zero.
 	BatchTimeout time.Duration
 
-	// Makes empty Batches.
-	BatchMaker BatchMaker
+	// This function should create a new empty Batch on each invocation.
+	BatchMaker func() Batch
 
 	// Once this Client has been started, send work items here to add to batch.
 	Work chan interface{}
@@ -107,13 +92,13 @@ func (c *Client) Stop() error {
 // Background process.
 func (c *Client) worker() {
 	defer c.workGroup.Done()
-	var batch = c.BatchMaker.MakeBatch()
+	var batch = c.BatchMaker()
 	var count int
 	var batchTimeout <-chan time.Time
 	send := func() {
 		c.workGroup.Add(1)
 		go batch.Fire(&c.workGroup)
-		batch = c.BatchMaker.MakeBatch()
+		batch = c.BatchMaker()
 		count = 0
 		batchTimeout = nil
 	}
