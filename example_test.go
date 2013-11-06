@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/daaku/go.muster"
+	"github.com/ParsePlatform/go.muster"
 )
 
 // The ShoppingClient manages the shopping list and dispatches shoppers.

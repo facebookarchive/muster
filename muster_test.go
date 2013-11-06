@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/daaku/go.muster"
+	"github.com/ParsePlatform/go.muster"
 )
 
 type testClient struct {
