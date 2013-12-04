@@ -9,16 +9,19 @@ import (
 )
 
 type testClient struct {
-	MaxBatchSize        int
-	BatchTimeout        time.Duration
-	PendingWorkCapacity int
-	Fire                func(items []string, notifier muster.Notifier)
-	muster              muster.Client
+	MaxBatchSize         uint
+	BatchTimeout         time.Duration
+	MaxConcurrentBatches uint
+	PendingWorkCapacity  uint
+	Fire                 func(items []string, notifier muster.Notifier)
+	FireSleep            time.Duration
+	muster               muster.Client
 }
 
 func (c *testClient) Start() error {
 	c.muster.MaxBatchSize = c.MaxBatchSize
 	c.muster.BatchTimeout = c.BatchTimeout
+	c.muster.MaxConcurrentBatches = c.MaxConcurrentBatches
 	c.muster.PendingWorkCapacity = c.PendingWorkCapacity
 	c.muster.BatchMaker = func() muster.Batch { return &testBatch{Client: c} }
 	return c.muster.Start()
@@ -42,6 +45,9 @@ func (b *testBatch) Add(item interface{}) {
 }
 
 func (b *testBatch) Fire(notifier muster.Notifier) {
+	if b.Client.FireSleep != 0 {
+		time.Sleep(b.Client.FireSleep)
+	}
 	b.Client.Fire(b.Items, notifier)
 }
 
@@ -85,7 +91,7 @@ func TestMaxBatch(t *testing.T) {
 	expected := [][]string{{"milk", "yogurt", "butter"}}
 	finished := make(chan struct{})
 	c := &testClient{
-		MaxBatchSize:        len(expected[0][0]),
+		MaxBatchSize:        uint(len(expected[0][0])),
 		BatchTimeout:        20 * time.Millisecond,
 		Fire:                expectFire(t, finished, expected),
 		PendingWorkCapacity: 100,
@@ -222,6 +228,40 @@ func TestContiniousSendWithTimeoutOnly(t *testing.T) {
 		}
 	}()
 	<-finished
+}
+
+func TestMaxConcurrentBatches(t *testing.T) {
+	t.Parallel()
+	expected := [][]string{{"milk", "yogurt"}}
+	gotMilk := make(chan struct{})
+	gotYogurt := make(chan struct{})
+	c := &testClient{
+		MaxBatchSize:         1,
+		MaxConcurrentBatches: 1,
+		FireSleep:            5 * time.Second,
+		Fire: func(items []string, notifier muster.Notifier) {
+			defer notifier.Done()
+			if len(items) == 1 && items[0] == "milk" {
+				close(gotMilk)
+				return
+			}
+			if len(items) == 1 && items[0] == "yogurt" {
+				close(gotYogurt)
+				return
+			}
+			t.Fatalf("unexpected items: %v", items)
+		},
+	}
+	errCall(t, c.Start)
+	addExpected(c, expected)
+	select {
+	case c.muster.Work <- "never sent":
+		t.Fatal("should not get here")
+	case <-time.After(500 * time.Millisecond):
+	}
+	errCall(t, c.Stop)
+	<-gotMilk
+	<-gotYogurt
 }
 
 func BenchmarkFlow(b *testing.B) {

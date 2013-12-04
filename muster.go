@@ -19,11 +19,19 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/ParsePlatform/go.limitgroup"
 )
 
 var errZeroBoth = errors.New(
 	"muster: MaxBatchSize and BatchTimeout can't both be zero",
 )
+
+type waitGroup interface {
+	Add(delta int)
+	Done()
+	Wait()
+}
 
 // The notifier is used to indicate to the Client when a batch has finished
 // processing.
@@ -51,30 +59,44 @@ type Client struct {
 	// Maximum number of items in a batch. If this is zero batches will only be
 	// dispatched upon hitting the BatchTimeout. It is an error for both this and
 	// the BatchTimeout to be zero.
-	MaxBatchSize int
+	MaxBatchSize uint
 
 	// Duration after which to send a pending batch. If this is zero batches will
 	// only be dispatched upon hitting the MaxBatchSize. It is an error for both
 	// this and the MaxBatchSize to be zero.
 	BatchTimeout time.Duration
 
-	// This function should create a new empty Batch on each invocation.
-	BatchMaker func() Batch
+	// MaxConcurrentBatches determines how many parallel batches we'll allow to
+	// be "in flight" concurrently. Once these many batches are in flight, the
+	// PendingWorkCapacity determines when sending to the Work channel will start
+	// blocking. In other words, once MaxConcurrentBatches hits, the system
+	// starts blocking. This allows for tighter control over memory utilization.
+	// If not set, the number of parallel batches in-flight will not be limited.
+	MaxConcurrentBatches uint
 
 	// Capacity of work channel. If this is zero, the Work channel will be
 	// blocking.
-	PendingWorkCapacity int
+	PendingWorkCapacity uint
+
+	// This function should create a new empty Batch on each invocation.
+	BatchMaker func() Batch
 
 	// Once this Client has been started, send work items here to add to batch.
 	Work chan interface{}
 
-	workGroup sync.WaitGroup
+	workGroup waitGroup
 }
 
 // Start the background worker goroutines and get ready for accepting requests.
 func (c *Client) Start() error {
 	if int64(c.BatchTimeout) == 0 && c.MaxBatchSize == 0 {
 		return errZeroBoth
+	}
+
+	if c.MaxConcurrentBatches == 0 {
+		c.workGroup = &sync.WaitGroup{}
+	} else {
+		c.workGroup = limitgroup.NewLimitGroup(c.MaxConcurrentBatches + 1)
 	}
 
 	c.Work = make(chan interface{}, c.PendingWorkCapacity)
@@ -94,11 +116,11 @@ func (c *Client) Stop() error {
 func (c *Client) worker() {
 	defer c.workGroup.Done()
 	var batch = c.BatchMaker()
-	var count int
+	var count uint
 	var batchTimeout <-chan time.Time
 	send := func() {
 		c.workGroup.Add(1)
-		go batch.Fire(&c.workGroup)
+		go batch.Fire(c.workGroup)
 		batch = c.BatchMaker()
 		count = 0
 		batchTimeout = nil

@@ -10,9 +10,9 @@ import (
 
 // The ShoppingClient manages the shopping list and dispatches shoppers.
 type ShoppingClient struct {
-	MaxBatchSize        int           // How much a shopper can carry at a time.
+	MaxBatchSize        uint          // How much a shopper can carry at a time.
 	BatchTimeout        time.Duration // How long we wait once we need to get something.
-	PendingWorkCapacity int           // How long our shopping list can be.
+	PendingWorkCapacity uint          // How long our shopping list can be.
 	muster              muster.Client
 }
 
@@ -80,7 +80,7 @@ func Example() {
 	// Since our timeout is 20ms, these 2 will end up in a batch once we Sleep.
 	sm.Add("bread")
 	sm.Add("bagels")
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	// Finally this 1 will also get batched as soon as we Stop which flushes.
 	sm.Add("cheese")
