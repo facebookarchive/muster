@@ -1,4 +1,4 @@
-go.muster [![Build Status](https://secure.travis-ci.org/ParsePlatform/go.muster.png)](http://travis-ci.org/ParsePlatform/go.muster)
-=========
+muster [![Build Status](https://secure.travis-ci.org/facebookgo/muster.png)](http://travis-ci.org/facebookgo/muster)
+======
 
-Documentation: http://godoc.org/github.com/ParsePlatform/go.muster
+Documentation: http://godoc.org/github.com/facebookgo/muster

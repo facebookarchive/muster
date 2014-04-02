@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ParsePlatform/go.muster"
+	"github.com/facebookgo/muster"
 )
 
 // The ShoppingClient manages the shopping list and dispatches shoppers.

@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ParsePlatform/go.limitgroup"
+	"github.com/facebookgo/limitgroup"
 )
 
 var errZeroBoth = errors.New(
