@@ -2,6 +2,7 @@ package muster_test
 
 import (
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -193,41 +194,73 @@ func TestEmptyStop(t *testing.T) {
 
 func TestContiniousSendWithTimeoutOnlyBlocking(t *testing.T) {
 	t.Parallel()
-	finished := make(chan bool, 1)
+	var batchesTotal, fireTotal, addedTotal uint64
 	c := &testClient{
 		BatchTimeout: 5 * time.Millisecond,
 		Fire: func(actual []string, notifier muster.Notifier) {
 			defer notifier.Done()
-			finished <- true
+			atomic.AddUint64(&batchesTotal, 1)
+			atomic.AddUint64(&fireTotal, uint64(len(actual)))
 		},
 	}
 	errCall(t, c.Start)
+
+	finished := make(chan struct{})
 	go func() {
-		for {
+		defer close(finished)
+		deadline := time.Now().Add(time.Second)
+		for time.Now().Before(deadline) {
+			atomic.AddUint64(&addedTotal, 1)
 			c.Add("42")
 		}
 	}()
 	<-finished
+	errCall(t, c.Stop)
+	if fireTotal != addedTotal {
+		t.Fatalf("fireTotal=%d VS addedTotal=%d", fireTotal, addedTotal)
+	}
+	t.Logf(
+		"batchesTotal=%d fireTotal=%d addedTotal=%d",
+		batchesTotal,
+		fireTotal,
+		addedTotal,
+	)
 }
 
 func TestContiniousSendWithTimeoutOnly(t *testing.T) {
 	t.Parallel()
-	finished := make(chan bool, 1)
+	var batchesTotal, fireTotal, addedTotal uint64
 	c := &testClient{
 		BatchTimeout: 5 * time.Millisecond,
 		Fire: func(actual []string, notifier muster.Notifier) {
 			defer notifier.Done()
-			finished <- true
+			atomic.AddUint64(&batchesTotal, 1)
+			atomic.AddUint64(&fireTotal, uint64(len(actual)))
 		},
 		PendingWorkCapacity: 100,
 	}
 	errCall(t, c.Start)
+
+	finished := make(chan struct{})
 	go func() {
-		for {
+		defer close(finished)
+		deadline := time.Now().Add(time.Second)
+		for time.Now().Before(deadline) {
+			atomic.AddUint64(&addedTotal, 1)
 			c.Add("42")
 		}
 	}()
 	<-finished
+	errCall(t, c.Stop)
+	if fireTotal != addedTotal {
+		t.Fatalf("fireTotal=%d VS addedTotal=%d", fireTotal, addedTotal)
+	}
+	t.Logf(
+		"batchesTotal=%d fireTotal=%d addedTotal=%d",
+		batchesTotal,
+		fireTotal,
+		addedTotal,
+	)
 }
 
 func TestMaxConcurrentBatches(t *testing.T) {
