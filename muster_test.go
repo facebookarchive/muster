@@ -194,12 +194,11 @@ func TestEmptyStop(t *testing.T) {
 
 func TestContiniousSendWithTimeoutOnlyBlocking(t *testing.T) {
 	t.Parallel()
-	var batchesTotal, fireTotal, addedTotal uint64
+	var fireTotal, addedTotal uint64
 	c := &testClient{
 		BatchTimeout: 5 * time.Millisecond,
 		Fire: func(actual []string, notifier muster.Notifier) {
 			defer notifier.Done()
-			atomic.AddUint64(&batchesTotal, 1)
 			atomic.AddUint64(&fireTotal, uint64(len(actual)))
 		},
 	}
@@ -219,22 +218,15 @@ func TestContiniousSendWithTimeoutOnlyBlocking(t *testing.T) {
 	if fireTotal != addedTotal {
 		t.Fatalf("fireTotal=%d VS addedTotal=%d", fireTotal, addedTotal)
 	}
-	t.Logf(
-		"batchesTotal=%d fireTotal=%d addedTotal=%d",
-		batchesTotal,
-		fireTotal,
-		addedTotal,
-	)
 }
 
 func TestContiniousSendWithTimeoutOnly(t *testing.T) {
 	t.Parallel()
-	var batchesTotal, fireTotal, addedTotal uint64
+	var fireTotal, addedTotal uint64
 	c := &testClient{
 		BatchTimeout: 5 * time.Millisecond,
 		Fire: func(actual []string, notifier muster.Notifier) {
 			defer notifier.Done()
-			atomic.AddUint64(&batchesTotal, 1)
 			atomic.AddUint64(&fireTotal, uint64(len(actual)))
 		},
 		PendingWorkCapacity: 100,
@@ -255,12 +247,6 @@ func TestContiniousSendWithTimeoutOnly(t *testing.T) {
 	if fireTotal != addedTotal {
 		t.Fatalf("fireTotal=%d VS addedTotal=%d", fireTotal, addedTotal)
 	}
-	t.Logf(
-		"batchesTotal=%d fireTotal=%d addedTotal=%d",
-		batchesTotal,
-		fireTotal,
-		addedTotal,
-	)
 }
 
 func TestMaxConcurrentBatches(t *testing.T) {
