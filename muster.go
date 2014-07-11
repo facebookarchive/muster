@@ -33,16 +33,16 @@ type waitGroup interface {
 	Wait()
 }
 
-// The notifier is used to indicate to the Client when a batch has finished
+// Notifier is used to indicate to the Client when a batch has finished
 // processing.
 type Notifier interface {
 	// Calling Done will indicate the batch has finished processing.
 	Done()
 }
 
-// Represents a single batch where items will be added and Fire will be called
-// exactly once. The Batch does not need to be safe for concurrent access;
-// synchronization will be handled by the Client.
+// Batch collects added items. Fire will be called exactly once. The Batch does
+// not need to be safe for concurrent access; synchronization will be handled
+// by the Client.
 type Batch interface {
 	// This should add the given single item to the Batch. This is the "other
 	// end" of the Client.Work channel where your application will send items.
@@ -105,7 +105,7 @@ func (c *Client) Start() error {
 	return nil
 }
 
-// Gracefully stop and return once all processing has finished.
+// Stop gracefully and return once all processing has finished.
 func (c *Client) Stop() error {
 	close(c.Work)
 	c.workGroup.Wait()
