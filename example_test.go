@@ -90,9 +90,4 @@ func Example() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	// Output:
-	// Delivery [milk yogurt butter]
-	// Delivery [bread bagels]
-	// Delivery [cheese]
 }

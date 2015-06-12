@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/facebookgo/clock"
 	"github.com/facebookgo/limitgroup"
 )
 
@@ -84,7 +85,15 @@ type Client struct {
 	// Once this Client has been started, send work items here to add to batch.
 	Work chan interface{}
 
+	klock     clock.Clock
 	workGroup waitGroup
+}
+
+func (c *Client) clock() clock.Clock {
+	if c.klock == nil {
+		return clock.New()
+	}
+	return c.klock
 }
 
 // Start the background worker goroutines and get ready for accepting requests.
@@ -117,7 +126,7 @@ func (c *Client) worker() {
 	defer c.workGroup.Done()
 	var batch = c.BatchMaker()
 	var count uint
-	var batchTimer *time.Timer
+	var batchTimer *clock.Timer
 	var batchTimeout <-chan time.Time
 	send := func() {
 		c.workGroup.Add(1)
@@ -140,12 +149,8 @@ func (c *Client) worker() {
 		if c.MaxBatchSize != 0 && count >= c.MaxBatchSize {
 			send()
 		} else if int64(c.BatchTimeout) != 0 && count == 1 {
-			if batchTimer == nil {
-				batchTimer = time.NewTimer(c.BatchTimeout)
-				batchTimeout = batchTimer.C
-			} else {
-				batchTimer.Reset(c.BatchTimeout)
-			}
+			batchTimer = c.clock().Timer(c.BatchTimeout)
+			batchTimeout = batchTimer.C
 		}
 		return false
 	}

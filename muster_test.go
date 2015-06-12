@@ -1,4 +1,4 @@
-package muster_test
+package muster
 
 import (
 	"reflect"
@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/facebookgo/muster"
+	"github.com/facebookgo/clock"
 )
 
 type testClient struct {
@@ -14,9 +14,8 @@ type testClient struct {
 	BatchTimeout         time.Duration
 	MaxConcurrentBatches uint
 	PendingWorkCapacity  uint
-	Fire                 func(items []string, notifier muster.Notifier)
-	FireSleep            time.Duration
-	muster               muster.Client
+	Fire                 func(items []string, notifier Notifier)
+	muster               Client
 }
 
 func (c *testClient) Start() error {
@@ -24,7 +23,7 @@ func (c *testClient) Start() error {
 	c.muster.BatchTimeout = c.BatchTimeout
 	c.muster.MaxConcurrentBatches = c.MaxConcurrentBatches
 	c.muster.PendingWorkCapacity = c.PendingWorkCapacity
-	c.muster.BatchMaker = func() muster.Batch { return &testBatch{Client: c} }
+	c.muster.BatchMaker = func() Batch { return &testBatch{Client: c} }
 	return c.muster.Start()
 }
 
@@ -45,10 +44,7 @@ func (b *testBatch) Add(item interface{}) {
 	b.Items = append(b.Items, item.(string))
 }
 
-func (b *testBatch) Fire(notifier muster.Notifier) {
-	if b.Client.FireSleep != 0 {
-		time.Sleep(b.Client.FireSleep)
-	}
+func (b *testBatch) Fire(notifier Notifier) {
 	b.Client.Fire(b.Items, notifier)
 }
 
@@ -66,9 +62,9 @@ func expectFire(
 	t *testing.T,
 	finished chan struct{},
 	expected [][]string,
-) func(actual []string, notifier muster.Notifier) {
+) func(actual []string, notifier Notifier) {
 
-	return func(actual []string, notifier muster.Notifier) {
+	return func(actual []string, notifier Notifier) {
 		defer notifier.Done()
 		defer close(finished)
 		for _, batch := range expected {
@@ -182,7 +178,7 @@ func TestEmptyStop(t *testing.T) {
 	t.Parallel()
 	c := &testClient{
 		MaxBatchSize: 3,
-		Fire: func(actual []string, notifier muster.Notifier) {
+		Fire: func(actual []string, notifier Notifier) {
 			defer notifier.Done()
 			t.Fatal("should not get called")
 		},
@@ -197,23 +193,35 @@ func TestContiniousSendWithTimeoutOnlyBlocking(t *testing.T) {
 	var fireTotal, addedTotal uint64
 	c := &testClient{
 		BatchTimeout: 5 * time.Millisecond,
-		Fire: func(actual []string, notifier muster.Notifier) {
+		Fire: func(actual []string, notifier Notifier) {
 			defer notifier.Done()
 			atomic.AddUint64(&fireTotal, uint64(len(actual)))
 		},
 	}
+	klock := clock.NewMock()
+	c.muster.klock = klock
 	errCall(t, c.Start)
 
 	finished := make(chan struct{})
 	go func() {
 		defer close(finished)
-		deadline := time.Now().Add(time.Second)
-		for time.Now().Before(deadline) {
-			atomic.AddUint64(&addedTotal, 1)
-			c.Add("42")
+		for {
+			select {
+			case <-finished:
+				return
+			case c.muster.Work <- "42":
+				atomic.AddUint64(&addedTotal, 1)
+			default:
+			}
 		}
 	}()
+
+	for i := 0; i < 3; i++ {
+		klock.Add(c.BatchTimeout)
+	}
+	finished <- struct{}{}
 	<-finished
+
 	errCall(t, c.Stop)
 	if fireTotal != addedTotal {
 		t.Fatalf("fireTotal=%d VS addedTotal=%d", fireTotal, addedTotal)
@@ -225,24 +233,36 @@ func TestContiniousSendWithTimeoutOnly(t *testing.T) {
 	var fireTotal, addedTotal uint64
 	c := &testClient{
 		BatchTimeout: 5 * time.Millisecond,
-		Fire: func(actual []string, notifier muster.Notifier) {
+		Fire: func(actual []string, notifier Notifier) {
 			defer notifier.Done()
 			atomic.AddUint64(&fireTotal, uint64(len(actual)))
 		},
 		PendingWorkCapacity: 100,
 	}
+	klock := clock.NewMock()
+	c.muster.klock = klock
 	errCall(t, c.Start)
 
 	finished := make(chan struct{})
 	go func() {
 		defer close(finished)
-		deadline := time.Now().Add(time.Second)
-		for time.Now().Before(deadline) {
-			atomic.AddUint64(&addedTotal, 1)
-			c.Add("42")
+		for {
+			select {
+			case <-finished:
+				return
+			case c.muster.Work <- "42":
+				atomic.AddUint64(&addedTotal, 1)
+			default:
+			}
 		}
 	}()
+
+	for i := 0; i < 3; i++ {
+		klock.Add(c.BatchTimeout)
+	}
+	finished <- struct{}{}
 	<-finished
+
 	errCall(t, c.Stop)
 	if fireTotal != addedTotal {
 		t.Fatalf("fireTotal=%d VS addedTotal=%d", fireTotal, addedTotal)
@@ -257,15 +277,14 @@ func TestMaxConcurrentBatches(t *testing.T) {
 	c := &testClient{
 		MaxBatchSize:         1,
 		MaxConcurrentBatches: 1,
-		FireSleep:            5 * time.Second,
-		Fire: func(items []string, notifier muster.Notifier) {
+		Fire: func(items []string, notifier Notifier) {
 			defer notifier.Done()
 			if len(items) == 1 && items[0] == "milk" {
-				close(gotMilk)
+				gotMilk <- struct{}{}
 				return
 			}
 			if len(items) == 1 && items[0] == "yogurt" {
-				close(gotYogurt)
+				gotYogurt <- struct{}{}
 				return
 			}
 			t.Fatalf("unexpected items: %v", items)
@@ -276,11 +295,11 @@ func TestMaxConcurrentBatches(t *testing.T) {
 	select {
 	case c.muster.Work <- "never sent":
 		t.Fatal("should not get here")
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(1 * time.Millisecond):
 	}
-	errCall(t, c.Stop)
 	<-gotMilk
 	<-gotYogurt
+	errCall(t, c.Stop)
 }
 
 func BenchmarkFlow(b *testing.B) {
@@ -288,7 +307,7 @@ func BenchmarkFlow(b *testing.B) {
 		MaxBatchSize:        3,
 		BatchTimeout:        time.Hour,
 		PendingWorkCapacity: 100,
-		Fire: func(actual []string, notifier muster.Notifier) {
+		Fire: func(actual []string, notifier Notifier) {
 			notifier.Done()
 		},
 	}
